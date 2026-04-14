@@ -604,4 +604,498 @@ export default function RuvaApp({ userEmail, userId }) {
             <div style={{ fontSize: 32, fontWeight: 800, background: "linear-gradient(135deg, #60A5FA, #818CF8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               {data.score.level}
             </div>
-  
+            <div style={{ fontSize: 11, color: "#64748B", textTransform: "uppercase", letterSpacing: "1px" }}>Nivel</div>
+          </div>
+        </div>
+        <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>{data.score.total.toLocaleString()} pts</div>
+        <div style={{ fontSize: 13, color: "#64748B" }}>+{data.score.todayPoints} hoy</div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: isDesktop ? "repeat(4, 1fr)" : "1fr 1fr", gap: 12, marginBottom: 24 }}>
+        <div style={styles.statCard}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><Zap size={18} color="#F59E0B" /><span style={{ fontSize: 13, color: "#94A3B8" }}>Racha</span></div>
+          <div style={styles.statValue}>{data.score.streak} días</div>
+        </div>
+        <div style={styles.statCard}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><Check size={18} color="#10B981" /><span style={{ fontSize: 13, color: "#94A3B8" }}>Hoy</span></div>
+          <div style={styles.statValue}>{completedToday}/{totalToday}</div>
+        </div>
+        <div style={styles.statCard}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><Target size={18} color="#3B82F6" /><span style={{ fontSize: 13, color: "#94A3B8" }}>Proyectos</span></div>
+          <div style={styles.statValue}>{data.projects.length}</div>
+        </div>
+        <div style={styles.statCard}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><Trophy size={18} color="#818CF8" /><span style={{ fontSize: 13, color: "#94A3B8" }}>Eficiencia</span></div>
+          <div style={styles.statValue}>{completionPct}%</div>
+        </div>
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 13, color: "#64748B", marginBottom: 8 }}>Sesión: <strong style={{ color: "#94A3B8" }}>{userEmail}</strong></div>
+        <button onClick={D.signOut} style={{ ...styles.catOption(false), display: "flex", alignItems: "center", gap: 8, color: "#F87171" }}>
+          <LogOut size={14} /> Cerrar sesión
+        </button>
+      </div>
+      <div style={{ height: isDesktop ? 40 : 160 }} />
+    </div>
+  );
+
+  // ─── MODALS ───
+  const renderAddTaskModal = () => (
+    <div style={styles.modal} onClick={() => setShowAddTask(false)}>
+      <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Nueva Tarea</h3>
+          <button style={styles.actionBtn} onClick={() => setShowAddTask(false)}><X size={18} /></button>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 6 }}>Título</label>
+          <input style={styles.input} placeholder="¿Qué necesitas hacer?" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} autoFocus />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 6 }}>Fecha</label>
+          <input type="date" style={styles.input} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+        </div>
+        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 6 }}>Hora</label>
+            <input type="time" style={styles.input} value={newTask.time} onChange={(e) => setNewTask({ ...newTask, time: e.target.value })} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 6 }}>Duración (min)</label>
+            <input type="number" style={styles.input} value={newTask.duration} onChange={(e) => setNewTask({ ...newTask, duration: parseInt(e.target.value) || 30 })} min={5} step={5} />
+          </div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 8 }}>Categoría</label>
+          <div style={styles.categorySelector}>
+            {Object.entries(categoryMeta).map(([key, meta]) => (
+              <button key={key} style={styles.catOption(newTask.category === key)} onClick={() => setNewTask({ ...newTask, category: key })}>{meta.label}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 8 }}>
+            <Repeat size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />Repetir
+          </label>
+          <div style={styles.categorySelector}>
+            {Object.entries(recurringLabels).map(([key, meta]) => (
+              <button key={key} style={styles.catOption(newTask.recurring === key)} onClick={() => setNewTask({ ...newTask, recurring: key })}>
+                {meta.icon && <span style={{ marginRight: 4 }}>{meta.icon}</span>}{meta.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 8 }}>
+            <ListChecks size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />Subtareas ({newTask.subtasks.length})
+          </label>
+          {newTask.subtasks.map((s) => (
+            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, padding: "8px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 8 }}>
+              <div style={{ flex: 1, fontSize: 13, color: "#CBD5E1" }}>{s.text}</div>
+              <button style={styles.actionBtn} onClick={() => setNewTask({ ...newTask, subtasks: newTask.subtasks.filter((x) => x.id !== s.id) })}>
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+          <input
+            style={{ ...styles.input, padding: "10px 14px", fontSize: 13 }}
+            placeholder="Agregar subtarea..."
+            value={newSubtaskText}
+            onChange={(e) => setNewSubtaskText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newSubtaskText.trim()) {
+                setNewTask({ ...newTask, subtasks: [...newTask.subtasks, { id: Date.now(), text: newSubtaskText.trim(), done: false }] });
+                setNewSubtaskText("");
+              }
+            }}
+          />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 8 }}>Proyecto (opcional)</label>
+          <div style={styles.categorySelector}>
+            <button style={styles.catOption(newTask.projectId === null)} onClick={() => setNewTask({ ...newTask, projectId: null })}>Ninguno</button>
+            {data.projects.map((p) => (
+              <button key={p.id} style={styles.catOption(newTask.projectId === p.id)} onClick={() => setNewTask({ ...newTask, projectId: p.id })}>{p.name}</button>
+            ))}
+          </div>
+        </div>
+        <button style={styles.primaryBtn} onClick={handleAddTask}>Agregar Tarea</button>
+      </div>
+    </div>
+  );
+
+  const renderAddProjectModal = () => (
+    <div style={styles.modal} onClick={() => setShowAddProject(false)}>
+      <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Nuevo Proyecto</h3>
+          <button style={styles.actionBtn} onClick={() => setShowAddProject(false)}><X size={18} /></button>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 6 }}>Nombre</label>
+          <input style={styles.input} placeholder="Ej: Rebranding cliente X" value={newProject.name} onChange={(e) => setNewProject({ ...newProject, name: e.target.value })} autoFocus />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 6 }}>Fecha límite</label>
+          <input type="date" style={styles.input} value={newProject.deadline} onChange={(e) => setNewProject({ ...newProject, deadline: e.target.value })} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 8 }}>Color</label>
+          <div style={{ display: "flex", gap: 10 }}>
+            {["#3B82F6", "#8B5CF6", "#06B6D4", "#10B981", "#F59E0B", "#EF4444", "#EC4899"].map((c) => (
+              <button key={c} onClick={() => setNewProject({ ...newProject, color: c })} style={{ width: 36, height: 36, borderRadius: 10, background: c, border: newProject.color === c ? "3px solid white" : "2px solid transparent", cursor: "pointer" }} />
+            ))}
+          </div>
+        </div>
+        <button style={styles.primaryBtn} onClick={handleAddProject}>Crear Proyecto</button>
+      </div>
+    </div>
+  );
+
+  const renderAddNoteModal = () => (
+    <div style={styles.modal} onClick={() => setShowAddNote(false)}>
+      <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Nueva Nota</h3>
+          <button style={styles.actionBtn} onClick={() => setShowAddNote(false)}><X size={18} /></button>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <input style={styles.input} placeholder="Título de la nota" value={newNote.title} onChange={(e) => setNewNote({ ...newNote, title: e.target.value })} autoFocus />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <textarea style={styles.textarea} placeholder="Escribe tu nota aquí..." value={newNote.content} onChange={(e) => setNewNote({ ...newNote, content: e.target.value })} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 8 }}>Carpeta</label>
+          <div style={styles.categorySelector}>
+            <button style={styles.catOption(newNote.folderId === null)} onClick={() => setNewNote({ ...newNote, folderId: null })}>Sin carpeta</button>
+            {data.folders.map((f) => (
+              <button key={f.id} style={styles.catOption(newNote.folderId === f.id)} onClick={() => setNewNote({ ...newNote, folderId: f.id })}>{f.icon} {f.name}</button>
+            ))}
+          </div>
+        </div>
+        <button style={styles.primaryBtn} onClick={handleAddNote}>Guardar Nota</button>
+      </div>
+    </div>
+  );
+
+  const renderAddFolderModal = () => (
+    <div style={styles.modal} onClick={() => setShowAddFolder(false)}>
+      <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Nueva Carpeta</h3>
+          <button style={styles.actionBtn} onClick={() => setShowAddFolder(false)}><X size={18} /></button>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <input style={styles.input} placeholder="Ej: Proyectos 2026" value={newFolder.name} onChange={(e) => setNewFolder({ ...newFolder, name: e.target.value })} autoFocus />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 8 }}>Icono</label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {["📁", "💡", "🎨", "👥", "⚙️", "🌱", "🚀", "📝", "🎯", "🔥", "⭐", "📚"].map((icon) => (
+              <button key={icon} onClick={() => setNewFolder({ ...newFolder, icon })} style={{ width: 44, height: 44, borderRadius: 10, background: newFolder.icon === icon ? "rgba(59,130,246,0.2)" : "rgba(255,255,255,0.05)", border: newFolder.icon === icon ? "2px solid #3B82F6" : "1px solid rgba(255,255,255,0.1)", cursor: "pointer", fontSize: 20 }}>{icon}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 8 }}>Color</label>
+          <div style={{ display: "flex", gap: 10 }}>
+            {["#3B82F6", "#8B5CF6", "#06B6D4", "#10B981", "#F59E0B", "#EF4444", "#EC4899"].map((c) => (
+              <button key={c} onClick={() => setNewFolder({ ...newFolder, color: c })} style={{ width: 36, height: 36, borderRadius: 10, background: c, border: newFolder.color === c ? "3px solid white" : "2px solid transparent", cursor: "pointer" }} />
+            ))}
+          </div>
+        </div>
+        <button style={styles.primaryBtn} onClick={handleAddFolder}>Crear Carpeta</button>
+      </div>
+    </div>
+  );
+
+  const renderRescheduleModal = () => {
+    const task = showReschedule;
+    const quickDates = [
+      { label: "Hoy", date: getDateStr(0) },
+      { label: "Mañana", date: getDateStr(1) },
+      { label: "En 2 días", date: getDateStr(2) },
+      { label: "En 3 días", date: getDateStr(3) },
+      { label: "Próxima semana", date: getDateStr(7) },
+      { label: "En 2 semanas", date: getDateStr(14) },
+    ];
+    return (
+      <div style={styles.modal} onClick={() => setShowReschedule(null)}>
+        <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Cambiar fecha</h3>
+            <button style={styles.actionBtn} onClick={() => setShowReschedule(null)}><X size={18} /></button>
+          </div>
+          <div style={{ fontSize: 14, color: "#94A3B8", marginBottom: 16 }}>
+            <strong style={{ color: "#E2E8F0" }}>{task.title}</strong>
+            <div style={{ fontSize: 12, marginTop: 4 }}>Actualmente: {formatDate(task.date)}</div>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 8 }}>Accesos rápidos</label>
+            <div style={styles.categorySelector}>
+              {quickDates.map((qd) => (
+                <button key={qd.label} style={styles.catOption(false)} onClick={() => handleReschedule(task.id, qd.date)}>{qd.label}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 6 }}>O elige fecha específica</label>
+            <input type="date" style={styles.input} defaultValue={task.date} onChange={(e) => handleReschedule(task.id, e.target.value)} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderEditNoteModal = () => (
+    <div style={styles.modal} onClick={() => setEditingNote(null)}>
+      <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Editar Nota</h3>
+          <button style={styles.actionBtn} onClick={() => setEditingNote(null)}><X size={18} /></button>
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <input style={styles.input} value={editingNote.title} onChange={(e) => { setEditingNote({ ...editingNote, title: e.target.value }); D.updateNote(editingNote.id, { title: e.target.value }); }} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <textarea style={styles.textarea} value={editingNote.content || ""} onChange={(e) => { setEditingNote({ ...editingNote, content: e.target.value }); D.updateNote(editingNote.id, { content: e.target.value }); }} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 8 }}>Mover a carpeta</label>
+          <div style={styles.categorySelector}>
+            <button style={styles.catOption(!editingNote.folderId)} onClick={() => { setEditingNote({ ...editingNote, folderId: null }); D.updateNote(editingNote.id, { folderId: null }); }}>Sin carpeta</button>
+            {data.folders.map((f) => (
+              <button key={f.id} style={styles.catOption(editingNote.folderId === f.id)} onClick={() => { setEditingNote({ ...editingNote, folderId: f.id }); D.updateNote(editingNote.id, { folderId: f.id }); }}>{f.icon} {f.name}</button>
+            ))}
+          </div>
+        </div>
+        <button style={styles.primaryBtn} onClick={() => { setEditingNote(null); notify("Nota actualizada"); }}>Guardar</button>
+      </div>
+    </div>
+  );
+
+  const renderConvertInboxModal = () => {
+    const item = showConvertInbox;
+    return (
+      <div style={styles.modal} onClick={() => setShowConvertInbox(null)}>
+        <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Convertir a Tarea</h3>
+            <button style={styles.actionBtn} onClick={() => setShowConvertInbox(null)}><X size={18} /></button>
+          </div>
+          <div style={{ fontSize: 14, color: "#E2E8F0", marginBottom: 16, padding: "12px 14px", background: "rgba(251,191,36,0.08)", borderRadius: 10, border: "1px solid rgba(251,191,36,0.2)" }}>
+            &quot;{item.text}&quot;
+          </div>
+          <ConvertInboxForm item={item} data={data} onConvert={handleConvertTask} styles={styles} />
+        </div>
+      </div>
+    );
+  };
+
+  const renderQuickInbox = () => (
+    <div style={styles.modal} onClick={() => setQuickInboxOpen(false)}>
+      <div style={{ ...styles.modalContent, maxWidth: 500, alignSelf: "flex-start", marginTop: 80 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <Inbox size={20} color="#FBBF24" />
+          <div style={{ fontSize: 13, color: "#94A3B8" }}>Captura rápida → Inbox</div>
+        </div>
+        <input
+          style={{ ...styles.input, borderColor: "rgba(251,191,36,0.4)", background: "rgba(251,191,36,0.05)", fontSize: 17, padding: "16px 20px" }}
+          placeholder="Escribe lo que sea, Enter para guardar..."
+          value={quickInput}
+          onChange={(e) => setQuickInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && quickInput.trim()) {
+              handleAddInbox(quickInput); setQuickInput(""); setQuickInboxOpen(false);
+            }
+          }}
+          autoFocus
+        />
+      </div>
+    </div>
+  );
+
+  const tabs = [
+    { id: "agenda", label: "Agenda", icon: Calendar },
+    { id: "inbox", label: "Inbox", icon: Inbox, badge: data.inbox.length },
+    { id: "projects", label: "Proyectos", icon: Target },
+    { id: "notes", label: "Notas", icon: FileText },
+    { id: "score", label: "Progreso", icon: Trophy },
+  ];
+
+  const handleFab = () => {
+    if (activeTab === "agenda") setShowAddTask(true);
+    else if (activeTab === "projects") setShowAddProject(true);
+    else if (activeTab === "notes") setShowAddNote(true);
+  };
+
+  return (
+    <div style={styles.app}>
+      <style>{`
+        @keyframes slideDown { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+      `}</style>
+
+      {notification && <div style={styles.notification(notification.type)}>{notification.msg}</div>}
+
+      {isDesktop && (
+        <div style={styles.sidebar}>
+          <div style={styles.sidebarLogo}><RuvaLogo size={28} /></div>
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <div key={tab.id} style={styles.sidebarNavItem(activeTab === tab.id)} onClick={() => setActiveTab(tab.id)}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <Icon size={18} strokeWidth={activeTab === tab.id ? 2.5 : 1.8} />
+                  {tab.label}
+                </div>
+                {tab.badge > 0 && (
+                  <span style={{ background: "rgba(251,191,36,0.2)", color: "#FBBF24", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 10 }}>{tab.badge}</span>
+                )}
+              </div>
+            );
+          })}
+          <div style={{ flex: 1 }} />
+          <div
+            style={{ padding: "12px 14px", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 10, fontSize: 12, color: "#94A3B8", display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
+            onClick={() => setQuickInboxOpen(true)}
+          >
+            <Sparkles size={14} color="#FBBF24" />
+            <span>Captura rápida</span>
+            <span style={{ marginLeft: "auto", fontSize: 10, padding: "2px 6px", background: "rgba(255,255,255,0.08)", borderRadius: 4 }}>⌘K</span>
+          </div>
+        </div>
+      )}
+
+      <div style={styles.mainContent}>
+        <div style={styles.innerContent}>
+          <div style={styles.header}>
+            <div>
+              {!isDesktop && (<div style={{ marginBottom: 16 }}><RuvaLogo size={32} /></div>)}
+              <div style={styles.greeting}>{getGreeting()}</div>
+              <div style={styles.name}>Ruva</div>
+            </div>
+            {isDesktop && (
+              <div style={{ display: "flex", gap: 10 }}>
+                <div style={styles.statCard}>
+                  <div style={styles.statValue}>{totalToday}</div>
+                  <div style={styles.statLabel}>Tareas hoy</div>
+                </div>
+                <div style={styles.statCard}>
+                  <div style={{ ...styles.statValue, color: "#60A5FA" }}>{Math.floor(totalMinutesToday / 60)}h {totalMinutesToday % 60}m</div>
+                  <div style={styles.statLabel}>Tiempo</div>
+                </div>
+                <div style={styles.statCard}>
+                  <div style={{ ...styles.statValue, color: "#FBBF24", display: "flex", alignItems: "center", gap: 4 }}>
+                    <Inbox size={16} /> {data.inbox.length}
+                  </div>
+                  <div style={styles.statLabel}>Inbox</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {!isDesktop && (
+            <div style={styles.statsRow}>
+              <div style={styles.statCard}>
+                <div style={styles.statValue}>{totalToday}</div>
+                <div style={styles.statLabel}>Hoy</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={{ ...styles.statValue, color: "#60A5FA" }}>{Math.floor(totalMinutesToday / 60)}h{totalMinutesToday % 60}m</div>
+                <div style={styles.statLabel}>Tiempo</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={{ ...styles.statValue, color: "#FBBF24", display: "flex", alignItems: "center", gap: 4 }}>
+                  <Inbox size={14} /> {data.inbox.length}
+                </div>
+                <div style={styles.statLabel}>Inbox</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={{ ...styles.statValue, color: "#818CF8", display: "flex", alignItems: "center", gap: 4 }}>
+                  <Zap size={14} /> {data.score.streak}
+                </div>
+                <div style={styles.statLabel}>Racha</div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "agenda" && renderAgenda()}
+          {activeTab === "inbox" && renderInbox()}
+          {activeTab === "projects" && renderProjects()}
+          {activeTab === "notes" && renderNotes()}
+          {activeTab === "score" && renderScore()}
+        </div>
+      </div>
+
+      {activeTab !== "score" && activeTab !== "inbox" && (
+        <button style={styles.fab} onClick={handleFab}><Plus size={26} /></button>
+      )}
+      {activeTab !== "inbox" && (
+        <button style={styles.fabInbox} onClick={() => setQuickInboxOpen(true)}><Sparkles size={20} /></button>
+      )}
+
+      {!isDesktop && (
+        <div style={styles.bottomNav}>
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button key={tab.id} style={styles.navItem(active)} onClick={() => setActiveTab(tab.id)}>
+                <Icon size={20} strokeWidth={active ? 2.5 : 1.5} />
+                {tab.label}
+                {tab.badge > 0 && (
+                  <span style={{ position: "absolute", top: 4, right: "30%", background: "#FBBF24", color: "#0A0E1A", fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 8, minWidth: 14, textAlign: "center" }}>{tab.badge}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {showAddTask && renderAddTaskModal()}
+      {showAddProject && renderAddProjectModal()}
+      {showAddNote && renderAddNoteModal()}
+      {showAddFolder && renderAddFolderModal()}
+      {showReschedule && renderRescheduleModal()}
+      {showConvertInbox && renderConvertInboxModal()}
+      {editingNote && renderEditNoteModal()}
+      {quickInboxOpen && renderQuickInbox()}
+    </div>
+  );
+}
+
+function ConvertInboxForm({ item, data, onConvert, styles }) {
+  const [form, setForm] = useState({ time: "09:00", duration: 30, category: "personal", projectId: null, date: new Date().toISOString().split("T")[0] });
+  return (
+    <>
+      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 6 }}>Fecha</label>
+          <input type="date" style={styles.input} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 6 }}>Hora</label>
+          <input type="time" style={styles.input} value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
+        </div>
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 6 }}>Duración (min)</label>
+        <input type="number" style={styles.input} value={form.duration} onChange={(e) => setForm({ ...form, duration: parseInt(e.target.value) || 30 })} min={5} step={5} />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 8 }}>Categoría</label>
+        <div style={styles.categorySelector}>
+          {["meeting", "creative", "admin", "personal"].map((key) => (
+            <button key={key} style={styles.catOption(form.category === key)} onClick={() => setForm({ ...form, category: key })}>
+              {key === "meeting" ? "Junta" : key === "creative" ? "Creativo" : key === "admin" ? "Admin" : "Personal"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <button style={styles.primaryBtn} onClick={() => onConvert(item, form)}>Convertir a Tarea</button>
+    </>
+  );
+}
+
