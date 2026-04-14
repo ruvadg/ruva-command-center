@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 
 function RuvaLogo({ size = 80 }) {
@@ -17,30 +18,51 @@ function RuvaLogo({ size = 80 }) {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | sending | sent | error
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
 
-  async function handleLogin(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (!email) return;
-    setStatus("sending");
+    if (!email || !password) return;
+    if (password.length < 6) {
+      setErr("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    setLoading(true);
     setErr("");
+    setMsg("");
     try {
       const supabase = getSupabase();
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (error) throw error;
-      setStatus("sent");
+      if (mode === "signup") {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        if (!data.session) {
+          setMsg("Cuenta creada. Revisa tu email para confirmar y luego inicia sesión.");
+          setMode("signin");
+          setPassword("");
+        } else {
+          router.push("/");
+          router.refresh();
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        router.push("/");
+        router.refresh();
+      }
     } catch (e) {
-      setErr(e.message || "Error enviando el link");
-      setStatus("error");
+      setErr(e.message || "Error al autenticar");
+    } finally {
+      setLoading(false);
     }
   }
+
+  const isSignup = mode === "signup";
 
   return (
     <div style={{
@@ -67,72 +89,112 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {status === "sent" ? (
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>✉️</div>
-            <h2 style={{ fontSize: 20, marginBottom: 8 }}>Revisa tu email</h2>
-            <p style={{ color: "#94A3B8", fontSize: 14, lineHeight: 1.5 }}>
-              Te enviamos un link mágico a <strong style={{ color: "#fff" }}>{email}</strong>.
-              Haz click y entras directo.
-            </p>
+        <form onSubmit={handleSubmit}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
+            {isSignup ? "Crear cuenta" : "Bienvenido"}
+          </h1>
+          <p style={{ color: "#94A3B8", fontSize: 14, marginBottom: 24 }}>
+            {isSignup
+              ? "Elige tu email y una contraseña."
+              : "Ingresa tu email y contraseña."}
+          </p>
+
+          <input
+            type="email"
+            required
+            placeholder="tu@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 12,
+              color: "#fff",
+              fontSize: 15,
+              outline: "none",
+              marginBottom: 12,
+            }}
+          />
+
+          <input
+            type="password"
+            required
+            minLength={6}
+            placeholder="Contraseña (mín. 6 caracteres)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 12,
+              color: "#fff",
+              fontSize: 15,
+              outline: "none",
+              marginBottom: 16,
+            }}
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "14px 16px",
+              background: "linear-gradient(135deg, #3B82F6, #818CF8)",
+              borderRadius: 12,
+              color: "#fff",
+              fontSize: 15,
+              fontWeight: 600,
+              border: "none",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading
+              ? (isSignup ? "Creando..." : "Entrando...")
+              : (isSignup ? "Crear cuenta" : "Entrar")}
+          </button>
+
+          {err && (
+            <div style={{
+              marginTop: 12, padding: 12, borderRadius: 8,
+              background: "rgba(239,68,68,0.1)", color: "#F87171", fontSize: 13,
+            }}>{err}</div>
+          )}
+
+          {msg && (
+            <div style={{
+              marginTop: 12, padding: 12, borderRadius: 8,
+              background: "rgba(59,130,246,0.1)", color: "#93C5FD", fontSize: 13,
+            }}>{msg}</div>
+          )}
+
+          <div style={{ marginTop: 20, textAlign: "center" }}>
             <button
-              onClick={() => setStatus("idle")}
-              style={{ marginTop: 20, color: "#3B82F6", fontSize: 13 }}
+              type="button"
+              onClick={() => {
+                setMode(isSignup ? "signin" : "signup");
+                setErr("");
+                setMsg("");
+              }}
+              style={{
+                color: "#3B82F6",
+                fontSize: 13,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+              }}
             >
-              Usar otro email
+              {isSignup
+                ? "¿Ya tienes cuenta? Inicia sesión"
+                : "¿No tienes cuenta? Créala"}
             </button>
           </div>
-        ) : (
-          <form onSubmit={handleLogin}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>Bienvenido</h1>
-            <p style={{ color: "#94A3B8", fontSize: 14, marginBottom: 24 }}>
-              Ingresa tu email y te mandamos un link para entrar.
-            </p>
-
-            <input
-              type="email"
-              required
-              placeholder="tu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px 16px",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 12,
-                color: "#fff",
-                fontSize: 15,
-                outline: "none",
-                marginBottom: 16,
-              }}
-            />
-
-            <button
-              type="submit"
-              disabled={status === "sending"}
-              style={{
-                width: "100%",
-                padding: "14px 16px",
-                background: "linear-gradient(135deg, #3B82F6, #818CF8)",
-                borderRadius: 12,
-                color: "#fff",
-                fontSize: 15,
-                fontWeight: 600,
-                opacity: status === "sending" ? 0.6 : 1,
-              }}
-            >
-              {status === "sending" ? "Enviando..." : "Enviar link mágico"}
-            </button>
-
-            {err && (
-              <div style={{
-                marginTop: 12, padding: 12, borderRadius: 8,
-                background: "rgba(239,68,68,0.1)", color: "#F87171", fontSize: 13,
-              }}>{err}</div>
-            )}
-          </form>
-        )}
+        </form>
       </div>
     </div>
   );
