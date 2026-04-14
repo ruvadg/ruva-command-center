@@ -96,7 +96,7 @@ export default function RuvaApp({ userEmail, userId }) {
   const [quickInboxOpen, setQuickInboxOpen] = useState(false);
   const [quickInput, setQuickInput] = useState("");
 
-  const [newTask, setNewTask] = useState({ title: "", time: "09:00", duration: 30, category: "creative", projectId: null, recurring: "none", subtasks: [] });
+  const [newTask, setNewTask] = useState({ title: "", time: "09:00", duration: 30, category: "creative", projectId: null, recurring: "none", subtasks: [], description: "" });
   const [newSubtaskText, setNewSubtaskText] = useState("");
   const [newProject, setNewProject] = useState({ name: "", deadline: getDateStr(7), color: "#3B82F6" });
   const [newNote, setNewNote] = useState({ title: "", content: "", folderId: null });
@@ -142,7 +142,7 @@ export default function RuvaApp({ userEmail, userId }) {
   const handleAddTask = async () => {
     if (!newTask.title.trim()) return;
     await D.addTask({ ...newTask, date: selectedDate });
-    setNewTask({ title: "", time: "09:00", duration: 30, category: "creative", projectId: null, recurring: "none", subtasks: [] });
+    setNewTask({ title: "", time: "09:00", duration: 30, category: "creative", projectId: null, recurring: "none", subtasks: [], description: "" });
     setShowAddTask(false);
     notify("Tarea agregada");
   };
@@ -304,6 +304,8 @@ export default function RuvaApp({ userEmail, userId }) {
                 {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
             )}
+                          <button style={styles.actionBtn} onClick={() => D.reorderTask(task.id, "up")}><ChevronUp size={14} /></button>
+                                        <button style={styles.actionBtn} onClick={() => D.reorderTask(task.id, "down")}><ChevronDown size={14} /></button>
             <button style={styles.actionBtn} onClick={() => handleMoveDays(task.id, -1)}><ArrowLeft size={14} /></button>
             <button style={styles.actionBtn} onClick={() => handleMoveDays(task.id, 1)}><ArrowRight size={14} /></button>
             <button style={styles.actionBtn} onClick={() => setShowReschedule(task)}><CalendarDays size={14} /></button>
@@ -312,6 +314,7 @@ export default function RuvaApp({ userEmail, userId }) {
         </div>
         {isExpanded && (
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)", paddingLeft: 36 }}>
+                            <textarea style={{ ...styles.input, minHeight: 50, resize: "vertical", fontSize: 13, marginBottom: 8 }} placeholder="Agregar descripción..." value={task.description || ""} onChange={(e) => D.updateTask(task.id, { description: e.target.value })} />
             {task.subtasks.map((s) => (
               <div key={s.id} style={styles.subtaskRow}>
                 <div style={styles.subtaskCheckbox(s.done)} onClick={() => D.toggleSubtask(task.id, s.id)}>
@@ -650,6 +653,10 @@ export default function RuvaApp({ userEmail, userId }) {
           <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 6 }}>Título</label>
           <input style={styles.input} placeholder="¿Qué necesitas hacer?" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} autoFocus />
         </div>
+                  <div style={{ marginBottom: 16 }}>
+                                <label style={{ fontSize: 13, color: "#647488", display: "block", marginBottom: 6 }}>Descripción (opcional)</label>
+                                            <textarea style={{ ...styles.input, minHeight: 60, resize: "vertical" }} placeholder="Agrega detalles..." value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} />
+                                                      </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ fontSize: 13, color: "#64748B", display: "block", marginBottom: 6 }}>Fecha</label>
           <input type="date" style={styles.input} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />

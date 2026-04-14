@@ -5,9 +5,17 @@ let client;
 
 export function getSupabase() {
   if (client) return client;
-  client = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
-  return client;
-}
+    client = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+                {
+                      cookieOptions: {
+                              maxAge: 60 * 60 * 24 * 7,
+                                      path: "/",
+                                              sameSite: "lax",
+                                                      secure: true,
+                                                            },
+                                                                }
+                                                                  );
+                                                                    return client;
+                                                                    }"

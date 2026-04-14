@@ -20,6 +20,7 @@ const taskFromDb = (r) => ({
   id: r.id, title: r.title, time: r.time, duration: r.duration,
   category: r.category, done: r.done, date: r.date,
   projectId: r.project_id, subtasks: r.subtasks || [], recurring: r.recurring || "none",
+    description: r.description || "", position: r.position || 0,
 });
 const noteFromDb = (r) => ({
   id: r.id, title: r.title, content: r.content,
@@ -52,7 +53,7 @@ export function useRuvaData(userId) {
       const [projects, folders, tasks, notes, inbox, profile] = await Promise.all([
         supabase.from("projects").select("*").order("id"),
         supabase.from("folders").select("*").order("id"),
-        supabase.from("tasks").select("*").order("date").order("time"),
+        supabase.from("tasks").select("*").order("date").order("position").order("time"),
         supabase.from("notes").select("*").order("created_at", { ascending: false }),
         supabase.from("inbox").select("*").order("created_at", { ascending: false }),
         supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
@@ -89,6 +90,7 @@ export function useRuvaData(userId) {
       user_id: uid(), title: t.title, time: t.time, duration: t.duration,
       category: t.category, done: false, date: t.date,
       project_id: t.projectId, subtasks: t.subtasks || [], recurring: t.recurring || "none",
+        description: t.description || "", position: t.position || 0,
     }).select().single();
     if (row) setData((p) => ({ ...p, tasks: p.tasks.map((x) => x.id === tempId ? taskFromDb(row) : x) }));
   }, [supabase]);
@@ -118,18 +120,18 @@ export function useRuvaData(userId) {
       if (task.projectId) {
         newProjects = p.projects.map((pr) => pr.id === task.projectId ? { ...pr, completed: pr.completed + (wasDone ? -1 : 1) } : pr);
         supabase.rpc ? null : null;
-        supabase.from("projects").update({ completed_count: (p.projects.find((pr) => pr.id === task.projectId)?.completed || 0) + (wasDone ? -1 : 1) }).eq("id", task.projectId).then(() => {});
+        supabase.from("projects").update({ completed_count: (p.projects.find((pr) => pr.id === task.projectId)?.completed || 0) + (wasDone ? -1 : 1) }).eq("id", task.projectId).then(({ error }) => { if (error) console.error("DB update failed:", error); });
       }
       const newScore = {
         ...p.score,
         total: p.score.total + pointChange,
         todayPoints: p.score.todayPoints + pointChange,
       };
-      supabase.from("profiles").update({ score_total: newScore.total }).eq("id", uid()).then(() => {});
+      supabase.from("profiles").update({ score_total: newScore.total }).eq("id", uid()).then(({ error }) => { if (error) console.error("DB update failed:", error); });
       return { ...p, tasks: newTasks, projects: newProjects, score: newScore };
     });
     if (task) {
-      supabase.from("tasks").update({ done: !task.done }).eq("id", id).then(() => {});
+      supabase.from("tasks").update({ done: !task.done }).eq("id", id).then(({ error }) => { if (error) console.error("DB update failed:", error); });
     }
   }, [supabase]);
 
@@ -287,6 +289,37 @@ export function useRuvaData(userId) {
     await deleteInboxItem(item.id);
   }, [addNote, deleteInboxItem]);
 
+  const updateTask = useCallback(async (id, updates) => {
+    setData((p) => ({ ...p, tasks: p.tasks.map((t) => t.id === id ? { ...t, ...updates } : t) }));
+    const dbUpdates = {};
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    await supabase.from("tasks").update(dbUpdates).eq("id", id);
+  }, [supabase]);
+
+  const reorderTask = useCallback(async (id, direction) => {
+    setData((p) => {
+      const task = p.tasks.find((t) => t.id === id);
+      if (!task) return p;
+      const dateTasks = p.tasks.filter((t) => t.date === task.date).sort((a, b) => a.position - b.position);
+      const idx = dateTasks.findIndex((t) => t.id === id);
+      const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= dateTasks.length) return p;
+      const swapTask = dateTasks[swapIdx];
+      const posA = task.position;
+      const posB = swapTask.position;
+      supabase.from("tasks").update({ position: posB }).eq("id", task.id)
+        .then(({ error }) => { if (error) console.error("Reorder failed:", error); });
+      supabase.from("tasks").update({ position: posA }).eq("id", swapTask.id)
+        .then(({ error }) => { if (error) console.error("Reorder failed:", error); });
+      return { ...p, tasks: p.tasks.map((t) => {
+        if (t.id === task.id) return { ...t, position: posB };
+        if (t.id === swapTask.id) return { ...t, position: posA };
+        return t;
+      }) };
+    });
+  }, [supabase]);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     window.location.href = "/login";
@@ -301,5 +334,6 @@ export function useRuvaData(userId) {
     addFolder, deleteFolder,
     addToInbox, deleteInboxItem, convertInboxToTask, convertInboxToNote,
     signOut,
+    updateTask, reorderTask,
   };
 }
